@@ -1,0 +1,7 @@
+flask
+werkzeug
+ultralytics
+onnxruntime
+gunicorn
+opencv-python
+onnx
