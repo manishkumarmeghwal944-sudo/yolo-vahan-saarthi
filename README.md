@@ -1,12 +1,12 @@
 # 🚗 YOLO Vahan Saarthi
 
-> YOLO-based vehicle detection, tracking, and direction-aware traffic counting.
+> YOLO-based vehicle detection, tracking, direction-aware counting, and traffic-density analysis.
 
 ## 📌 Overview
 
 **YOLO Vahan Saarthi** is a computer vision project built with **Ultralytics YOLO** to detect and track common road vehicles such as cars, motorcycles, buses, and trucks.
 
-The project includes a tracking and counting pipeline using **ByteTrack**. Each tracked vehicle receives a persistent ID and is counted once when its center crosses a configurable horizontal line. The crossing direction is reported as **IN** or **OUT**.
+The project includes a tracking and traffic-monitoring pipeline using **ByteTrack**. Each tracked vehicle receives a persistent ID, crossing events are classified as **IN** or **OUT**, and the system reports both a rolling vehicles-per-minute rate and a simple live traffic-density level.
 
 ## ✨ Current Features
 
@@ -18,6 +18,9 @@ The project includes a tracking and counting pipeline using **ByteTrack**. Each 
 - 🚦 Configurable counting line
 - ↗️ Direction-aware **IN / OUT** counting
 - 📊 Live total and per-class counts
+- ⏱️ Rolling **vehicles-per-minute** rate
+- 🚥 Live **LOW / MEDIUM / HIGH** traffic-density classification
+- 📈 Peak visible-vehicle count and average traffic rate
 - 💾 Saves the processed tracking video
 
 ## 🛠️ Tech Stack
@@ -72,7 +75,7 @@ YOLO model weights are downloaded automatically by Ultralytics when first used.
 python src/detection.py --source path/to/video.mp4
 ```
 
-### Tracking + IN/OUT counting
+### Traffic monitoring
 
 ```bash
 python src/tracking_counting.py --source path/to/video.mp4
@@ -96,6 +99,20 @@ python src/tracking_counting.py --source path/to/video.mp4 --line 0.50
 
 ```bash
 python src/tracking_counting.py --source path/to/video.mp4 --conf 0.50
+```
+
+### Change density thresholds
+
+The default thresholds are:
+
+- **LOW:** fewer than 5 visible tracked vehicles
+- **MEDIUM:** 5–11 visible tracked vehicles
+- **HIGH:** 12 or more visible tracked vehicles
+
+You can customize the Medium and High thresholds:
+
+```bash
+python src/tracking_counting.py --source path/to/video.mp4 --density-thresholds 8 20
 ```
 
 ### Change YOLO model
@@ -123,6 +140,28 @@ Each tracking ID is counted only once per program run, preventing repeated count
 
 > For reliable results, place the counting line across the road where vehicles clearly pass through it and use a camera with a stable view.
 
+## 🚥 Traffic-Density Analysis
+
+The system estimates live traffic density from the number of vehicle tracks visible in the current frame:
+
+| Visible tracked vehicles | Density |
+|---:|---|
+| 0–4 | LOW |
+| 5–11 | MEDIUM |
+| 12+ | HIGH |
+
+These are configurable thresholds rather than calibrated traffic-engineering standards. They provide a useful relative indicator for a fixed camera scene.
+
+### Vehicles per minute
+
+A rolling 60-second window tracks recent IN/OUT crossing events and displays:
+
+```text
+Vehicles/min: 14
+```
+
+At the end of processing, the program also reports the average crossing rate for the complete video.
+
 ## 🚘 Detected Vehicle Classes
 
 | Class | YOLO Class ID |
@@ -135,17 +174,16 @@ Each tracking ID is counted only once per program run, preventing repeated count
 ## 📊 Example Output
 
 ```text
-Vehicle Tracking & Counting Summary
------------------------------------
-IN           : 42
-OUT          : 18
-Total        : 60
-
-By vehicle class (IN / OUT):
-Car         : 25 / 10
-Motorcycle  : 12 / 5
-Bus         : 2 / 1
-Truck       : 3 / 2
+Traffic Monitoring Summary
+--------------------------
+Car         : IN=  25  OUT=  10
+Motorcycle  : IN=  12  OUT=   5
+Bus         : IN=   2  OUT=   1
+Truck       : IN=   3  OUT=   2
+Total crossed: 60
+Peak visible : 14 vehicles
+Average rate : 11.5 vehicles/min
+Result saved : runs/track/vehicle_tracking.mp4
 ```
 
 ## 🗺️ Roadmap
@@ -156,8 +194,8 @@ Truck       : 3 / 2
 - [x] Vehicle tracking with ByteTrack
 - [x] Line-crossing counting
 - [x] Direction-aware IN/OUT counting
-- [ ] Traffic-density analysis
-- [ ] Vehicle-per-minute statistics
+- [x] Traffic-density analysis
+- [x] Vehicle-per-minute statistics
 - [ ] Web dashboard
 - [ ] Automated tests
 - [ ] Evaluation metrics and benchmark results
