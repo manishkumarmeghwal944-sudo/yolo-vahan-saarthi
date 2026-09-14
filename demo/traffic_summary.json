@@ -1,0 +1,26 @@
+{
+  "counts_in": {
+    "car": 42,
+    "motorcycle": 18,
+    "bus": 6,
+    "truck": 9
+  },
+  "counts_out": {
+    "car": 37,
+    "motorcycle": 21,
+    "bus": 5,
+    "truck": 7
+  },
+  "total_in": 75,
+  "total_out": 70,
+  "total_crossed": 145,
+  "peak_visible": 23,
+  "average_vehicles_per_minute": 12.1,
+  "duration_minutes": 12.0,
+  "peak_density": "MEDIUM",
+  "density_thresholds": {
+    "low_max": 8,
+    "medium_max": 18
+  },
+  "counting_line_ratio": 0.5
+}
