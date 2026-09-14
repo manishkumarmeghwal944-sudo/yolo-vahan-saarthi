@@ -3,6 +3,7 @@
 Examples:
     python src/tracking_counting.py --source 0
     python src/tracking_counting.py --source path/to/video.mp4
+    python src/tracking_counting.py --source path/to/video.mp4 --no-display
 
 Vehicles are tracked with ByteTrack. Crossing a horizontal line creates an
 IN or OUT event. Results are exported for the Streamlit dashboard.
@@ -33,6 +34,7 @@ def parse_args() -> argparse.Namespace:
         default=(5, 12), help="Visible-vehicle thresholds for Medium and High density.",
     )
     parser.add_argument("--output", default="runs/track", help="Output directory.")
+    parser.add_argument("--no-display", action="store_true", help="Process without opening an OpenCV window (for cloud/server use).")
     return parser.parse_args()
 
 
@@ -145,13 +147,15 @@ def main() -> None:
                 cv2.putText(annotated, text, (20, 40 + index * 34), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
 
             writer.write(annotated)
-            cv2.imshow("YOLO Vahan Saarthi - Traffic Monitor", annotated)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+            if not args.no_display:
+                cv2.imshow("YOLO Vahan Saarthi - Traffic Monitor", annotated)
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
     finally:
         cap.release()
         writer.release()
-        cv2.destroyAllWindows()
+        if not args.no_display:
+            cv2.destroyAllWindows()
 
     total_in = sum(counts_in.values())
     total_out = sum(counts_out.values())
@@ -172,6 +176,7 @@ def main() -> None:
         "total_out": total_out,
         "total_crossed": total_crossed,
         "peak_visible": max_visible,
+        "peak_density": density_label(max_visible, tuple(args.density_thresholds)),
         "average_vehicles_per_minute": round(avg_vpm, 2),
         "duration_minutes": round(duration_minutes, 2),
         "density_thresholds": list(args.density_thresholds),
