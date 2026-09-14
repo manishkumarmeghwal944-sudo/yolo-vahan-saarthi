@@ -1,68 +1,160 @@
-# YOLO Vahan Saarthi
+# 🚗 YOLO Vahan Saarthi
 
-> A computer vision project for exploring vehicle detection with YOLO.
+> YOLO-based vehicle detection for images, videos, and webcams.
 
-## 📌 About
+## 📌 Overview
 
-**YOLO Vahan Saarthi** is a project focused on applying **YOLO (You Only Look Once)** object-detection technology to vehicle and traffic-related computer vision tasks.
+**YOLO Vahan Saarthi** is a computer vision project that uses the **Ultralytics YOLO** framework to detect common vehicle classes such as cars, motorcycles, buses, and trucks.
 
-The repository is currently in the **initial setup stage**. The project structure will be expanded as the detection pipeline, datasets, and experiments are developed.
+The current implementation provides a simple command-line detection pipeline that can work with a webcam, image, or video source and save annotated detection results.
 
-## 🚧 Current Status
+## ✨ Current Features
 
-**Status:** Early development / project setup
+- 🚘 Detects **cars, motorcycles, buses, and trucks**
+- 📷 Supports image input
+- 🎥 Supports video input
+- 📹 Supports webcam input
+- 🎯 Configurable confidence threshold
+- 🤖 Uses an Ultralytics YOLO model
+- 💾 Saves annotated detection results
+- 📊 Prints a vehicle-detection summary
 
-At the moment, this repository contains the initial project documentation only. No vehicle-detection implementation or trained model is included yet.
+## 🛠️ Tech Stack
 
-## 🎯 Planned Goals
+- **Python**
+- **Ultralytics YOLO**
+- **PyTorch** (through Ultralytics)
 
-- Implement YOLO-based vehicle detection
-- Support image and video input
-- Detect common vehicle classes
-- Explore real-time detection
-- Add vehicle counting and traffic analysis
-- Evaluate model performance
-- Document experiments and results
-
-## 🛠️ Planned Technology Stack
-
-- **Python** — application and model development
-- **YOLO** — object detection
-- **OpenCV** — image and video processing
-- **PyTorch** — deep-learning framework
-
-> The technology stack may change as the project develops.
-
-## 📁 Planned Project Structure
+## 📁 Project Structure
 
 ```text
 yolo-vahan-saarthi/
 ├── README.md
 ├── requirements.txt
-├── src/
-├── data/
-├── models/
-└── tests/
+├── .gitignore
+└── src/
+    └── detection.py
 ```
 
-This is a planned structure and does not represent files that are currently present in the repository.
+## 🚀 Installation
 
-## 🚀 Roadmap
+### 1. Clone the repository
 
-- [x] Create repository
-- [x] Add initial README
-- [ ] Set up Python environment
-- [ ] Add project dependencies
-- [ ] Add YOLO detection pipeline
-- [ ] Add sample input/output
-- [ ] Add vehicle counting
-- [ ] Add evaluation metrics
-- [ ] Add tests
-- [ ] Document results
+```bash
+git clone https://github.com/manishkumarmeghwal944-sudo/yolo-vahan-saarthi.git
+cd yolo-vahan-saarthi
+```
+
+### 2. Create and activate a virtual environment
+
+**Windows**
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+**Linux / macOS**
+
+```bash
+python -m venv venv
+source venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+The YOLO model weights are downloaded automatically by Ultralytics when the selected model is used for the first time.
+
+## ▶️ Usage
+
+### Webcam
+
+```bash
+python src/detection.py --source 0
+```
+
+### Image
+
+```bash
+python src/detection.py --source path/to/image.jpg
+```
+
+### Video
+
+```bash
+python src/detection.py --source path/to/video.mp4
+```
+
+### Use a different YOLO model
+
+```bash
+python src/detection.py --source path/to/video.mp4 --model yolo11s.pt
+```
+
+### Change confidence threshold
+
+```bash
+python src/detection.py --source 0 --conf 0.50
+```
+
+Detection results are saved under:
+
+```text
+runs/detect/vehicle_detection/
+```
+
+## 🚘 Detected Vehicle Classes
+
+The current pipeline filters the standard COCO classes to:
+
+| Class | YOLO Class ID |
+|---|---:|
+| Car | 2 |
+| Motorcycle | 3 |
+| Bus | 5 |
+| Truck | 7 |
+
+## 📊 Detection Summary
+
+After processing, the program prints a summary similar to:
+
+```text
+Vehicle Detection Summary
+-------------------------
+Car         : 12
+Motorcycle  : 4
+Bus         : 2
+Truck       : 3
+Total       : 21
+```
+
+## 🗺️ Roadmap
+
+- [x] Create project structure
+- [x] Add YOLO vehicle detection
+- [x] Support webcam, image, and video sources
+- [x] Add confidence threshold configuration
+- [x] Save detection results
+- [ ] Add vehicle tracking
+- [ ] Add reliable per-frame vehicle counting
+- [ ] Add traffic-density analysis
+- [ ] Add automated tests
+- [ ] Add evaluation metrics and benchmark results
+- [ ] Add sample detection outputs
 
 ## 🤝 Contributing
 
-This project is currently under active development. Suggestions, improvements, and contributions are welcome as the project takes shape.
+Contributions and suggestions are welcome.
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Commit your changes
+5. Open a Pull Request
 
 ## 📄 License
 
@@ -74,4 +166,4 @@ A license will be added when the project is prepared for public distribution.
 
 ---
 
-⭐ If you find the project interesting, consider starring the repository as it develops.
+⭐ If you find this project useful, consider starring the repository.
