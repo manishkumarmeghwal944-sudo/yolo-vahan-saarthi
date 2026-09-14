@@ -1,28 +1,31 @@
 # 🚗 YOLO Vahan Saarthi
 
-> YOLO-based vehicle detection for images, videos, and webcams.
+> YOLO-based vehicle detection, tracking, and counting for road-traffic video.
 
 ## 📌 Overview
 
-**YOLO Vahan Saarthi** is a computer vision project that uses the **Ultralytics YOLO** framework to detect common vehicle classes such as cars, motorcycles, buses, and trucks.
+**YOLO Vahan Saarthi** is a computer vision project built with **Ultralytics YOLO** to detect and track common road vehicles such as cars, motorcycles, buses, and trucks.
 
-The current implementation provides a simple command-line detection pipeline that can work with a webcam, image, or video source and save annotated detection results.
+The project now includes both basic detection and a tracking/counting pipeline. Vehicles receive persistent tracking IDs, and each tracked vehicle is counted once when its center crosses a configurable counting line.
 
 ## ✨ Current Features
 
 - 🚘 Detects **cars, motorcycles, buses, and trucks**
-- 📷 Supports image input
-- 🎥 Supports video input
+- 🎥 Supports video files
 - 📹 Supports webcam input
 - 🎯 Configurable confidence threshold
+- 🆔 Assigns persistent tracking IDs with **ByteTrack**
+- 🚦 Counts vehicles crossing a configurable line
+- 📊 Displays live per-class counts
+- 💾 Saves the processed tracking video
 - 🤖 Uses an Ultralytics YOLO model
-- 💾 Saves annotated detection results
-- 📊 Prints a vehicle-detection summary
 
 ## 🛠️ Tech Stack
 
 - **Python**
 - **Ultralytics YOLO**
+- **OpenCV**
+- **ByteTrack** (through Ultralytics)
 - **PyTorch** (through Ultralytics)
 
 ## 📁 Project Structure
@@ -33,7 +36,8 @@ yolo-vahan-saarthi/
 ├── requirements.txt
 ├── .gitignore
 └── src/
-    └── detection.py
+    ├── detection.py
+    └── tracking_counting.py
 ```
 
 ## 🚀 Installation
@@ -67,49 +71,83 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-The YOLO model weights are downloaded automatically by Ultralytics when the selected model is used for the first time.
+YOLO model weights are downloaded automatically by Ultralytics when the selected model is used for the first time.
 
 ## ▶️ Usage
 
-### Webcam
+### Basic vehicle detection
+
+Webcam:
 
 ```bash
 python src/detection.py --source 0
 ```
 
-### Image
-
-```bash
-python src/detection.py --source path/to/image.jpg
-```
-
-### Video
+Video:
 
 ```bash
 python src/detection.py --source path/to/video.mp4
 ```
 
-### Use a different YOLO model
+Image:
 
 ```bash
-python src/detection.py --source path/to/video.mp4 --model yolo11s.pt
+python src/detection.py --source path/to/image.jpg
 ```
 
-### Change confidence threshold
+### Vehicle tracking and counting
+
+Webcam:
 
 ```bash
-python src/detection.py --source 0 --conf 0.50
+python src/tracking_counting.py --source 0
 ```
 
-Detection results are saved under:
+Video:
+
+```bash
+python src/tracking_counting.py --source path/to/video.mp4
+```
+
+The default counting line is at **60% of the frame height**. You can change it with `--line`:
+
+```bash
+python src/tracking_counting.py --source path/to/video.mp4 --line 0.50
+```
+
+Change the confidence threshold:
+
+```bash
+python src/tracking_counting.py --source path/to/video.mp4 --conf 0.50
+```
+
+Use a different YOLO model:
+
+```bash
+python src/tracking_counting.py --source path/to/video.mp4 --model yolo11s.pt
+```
+
+Press **Q** while the tracking window is active to stop processing early.
+
+Processed tracking videos are saved under:
 
 ```text
-runs/detect/vehicle_detection/
+runs/track/vehicle_tracking.mp4
 ```
+
+## 🚦 How Counting Works
+
+1. YOLO detects the selected vehicle classes.
+2. ByteTrack assigns a persistent ID to each detected vehicle.
+3. The center point of each tracked bounding box is monitored across frames.
+4. When a vehicle center crosses the counting line, that track ID is counted once.
+5. Counts are displayed separately for cars, motorcycles, buses, and trucks.
+
+> **Note:** The current counter counts crossings in either direction. A single track is counted only once during a run.
 
 ## 🚘 Detected Vehicle Classes
 
-The current pipeline filters the standard COCO classes to:
+The pipeline filters the standard COCO classes to:
 
 | Class | YOLO Class ID |
 |---|---:|
@@ -118,33 +156,33 @@ The current pipeline filters the standard COCO classes to:
 | Bus | 5 |
 | Truck | 7 |
 
-## 📊 Detection Summary
-
-After processing, the program prints a summary similar to:
+## 📊 Example Output
 
 ```text
-Vehicle Detection Summary
--------------------------
-Car         : 12
-Motorcycle  : 4
-Bus         : 2
-Truck       : 3
-Total       : 21
+Vehicle Tracking & Counting Summary
+-----------------------------------
+Car         : 42
+Motorcycle  : 18
+Bus         : 5
+Truck       : 11
+Total crossed: 76
+Result saved : runs/track/vehicle_tracking.mp4
 ```
 
 ## 🗺️ Roadmap
 
 - [x] Create project structure
 - [x] Add YOLO vehicle detection
-- [x] Support webcam, image, and video sources
+- [x] Support webcam, image, and video detection
 - [x] Add confidence threshold configuration
 - [x] Save detection results
-- [ ] Add vehicle tracking
-- [ ] Add reliable per-frame vehicle counting
+- [x] Add vehicle tracking
+- [x] Add line-crossing vehicle counting
+- [ ] Add direction-aware IN/OUT counting
 - [ ] Add traffic-density analysis
 - [ ] Add automated tests
 - [ ] Add evaluation metrics and benchmark results
-- [ ] Add sample detection outputs
+- [ ] Add sample detection/tracking outputs
 
 ## 🤝 Contributing
 
