@@ -1,11 +1,12 @@
-"""Vehicle tracking and line-crossing counting with Ultralytics YOLO.
+"""Vehicle tracking with direction-aware IN/OUT counting.
 
 Examples:
     python src/tracking_counting.py --source 0
     python src/tracking_counting.py --source path/to/video.mp4
 
-The script tracks cars, motorcycles, buses, and trucks and counts each
-vehicle once when its tracked center crosses a configurable horizontal line.
+Vehicles are tracked with ByteTrack. A vehicle is counted once when its
+center crosses the configured horizontal line. Crossing from above to below
+is classified as IN; crossing from below to above is classified as OUT.
 """
 
 from __future__ import annotations
@@ -54,15 +55,13 @@ def main() -> None:
     line_y = int(height * max(0.1, min(args.line, 0.9)))
     output_path = Path(args.output) / "vehicle_tracking.mp4"
     writer = cv2.VideoWriter(
-        str(output_path),
-        cv2.VideoWriter_fourcc(*"mp4v"),
-        fps,
-        (width, height),
+        str(output_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
     )
 
     previous_y: dict[int, float] = {}
     counted_ids: set[int] = set()
-    counts = defaultdict(int)
+    counts_in = defaultdict(int)
+    counts_out = defaultdict(int)
 
     try:
         while True:
@@ -82,13 +81,8 @@ def main() -> None:
             annotated = result.plot()
             cv2.line(annotated, (0, line_y), (width, line_y), (255, 255, 255), 2)
             cv2.putText(
-                annotated,
-                "COUNTING LINE",
-                (20, max(30, line_y - 10)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (255, 255, 255),
-                2,
+                annotated, "COUNTING LINE", (20, max(30, line_y - 10)),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2,
             )
 
             if result.boxes is not None and result.boxes.id is not None:
@@ -97,32 +91,50 @@ def main() -> None:
                 boxes = result.boxes.xyxy.cpu().tolist()
 
                 for track_id, class_id, box in zip(ids, classes, boxes):
-                    x1, y1, x2, y2 = box
+                    _, y1, _, y2 = box
                     center_y = (y1 + y2) / 2
                     name = VEHICLE_CLASSES.get(class_id)
                     if name is None:
                         continue
 
                     old_y = previous_y.get(track_id)
-                    if (
-                        old_y is not None
-                        and track_id not in counted_ids
-                        and ((old_y < line_y <= center_y) or (old_y > line_y >= center_y))
-                    ):
-                        counts[name] += 1
-                        counted_ids.add(track_id)
+                    if old_y is not None and track_id not in counted_ids:
+                        crossed_down = old_y < line_y <= center_y
+                        crossed_up = old_y > line_y >= center_y
+
+                        if crossed_down:
+                            counts_in[name] += 1
+                            counted_ids.add(track_id)
+                        elif crossed_up:
+                            counts_out[name] += 1
+                            counted_ids.add(track_id)
 
                     previous_y[track_id] = center_y
 
-            total = sum(counts.values())
-            cv2.rectangle(annotated, (10, 10), (270, 145), (0, 0, 0), -1)
-            cv2.putText(annotated, f"Cars: {counts['car']}", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
-            cv2.putText(annotated, f"Motorcycles: {counts['motorcycle']}", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2)
-            cv2.putText(annotated, f"Buses: {counts['bus']}", (20, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
-            cv2.putText(annotated, f"Trucks: {counts['truck']}", (20, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
+            total_in = sum(counts_in.values())
+            total_out = sum(counts_out.values())
+            total = total_in + total_out
+
+            # Dashboard overlay.
+            cv2.rectangle(annotated, (10, 10), (340, 205), (0, 0, 0), -1)
+            lines = [
+                f"IN: {total_in}",
+                f"OUT: {total_out}",
+                f"TOTAL: {total}",
+                f"Cars {counts_in['car']}/{counts_out['car']}  "
+                f"Motorcycles {counts_in['motorcycle']}/{counts_out['motorcycle']}",
+                f"Buses {counts_in['bus']}/{counts_out['bus']}  "
+                f"Trucks {counts_in['truck']}/{counts_out['truck']}",
+            ]
+            for index, text in enumerate(lines):
+                scale = 0.65 if index < 3 else 0.48
+                cv2.putText(
+                    annotated, text, (20, 40 + index * 32),
+                    cv2.FONT_HERSHEY_SIMPLEX, scale, (255, 255, 255), 2,
+                )
 
             writer.write(annotated)
-            cv2.imshow("YOLO Vahan Saarthi - Tracking & Counting", annotated)
+            cv2.imshow("YOLO Vahan Saarthi - IN/OUT Tracking", annotated)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
     finally:
@@ -130,11 +142,16 @@ def main() -> None:
         writer.release()
         cv2.destroyAllWindows()
 
+    total_in = sum(counts_in.values())
+    total_out = sum(counts_out.values())
     print("\nVehicle Tracking & Counting Summary")
     print("-----------------------------------")
+    print(f"IN           : {total_in}")
+    print(f"OUT          : {total_out}")
+    print(f"Total        : {total_in + total_out}")
+    print("\nBy vehicle class (IN / OUT):")
     for name in VEHICLE_CLASSES.values():
-        print(f"{name.capitalize():12}: {counts[name]}")
-    print(f"Total crossed: {sum(counts.values())}")
+        print(f"{name.capitalize():12}: {counts_in[name]} / {counts_out[name]}")
     print(f"Result saved : {output_path}")
 
 
