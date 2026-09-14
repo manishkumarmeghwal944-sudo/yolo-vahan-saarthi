@@ -5,13 +5,14 @@ Examples:
     python src/tracking_counting.py --source path/to/video.mp4
 
 Vehicles are tracked with ByteTrack. Crossing a horizontal line creates an
-IN or OUT event. The script also reports a rolling vehicles-per-minute rate
-and a simple traffic-density classification based on visible tracked vehicles.
+IN or OUT event. Results are exported for the Streamlit dashboard.
 """
 
 from __future__ import annotations
 
 import argparse
+import csv
+import json
 from collections import defaultdict, deque
 from pathlib import Path
 
@@ -47,7 +48,8 @@ def density_label(visible_count: int, thresholds: tuple[int, int]) -> str:
 def main() -> None:
     args = parse_args()
     source = int(args.source) if args.source.isdigit() else args.source
-    Path(args.output).mkdir(parents=True, exist_ok=True)
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     model = YOLO(args.model)
     cap = cv2.VideoCapture(source)
@@ -61,7 +63,9 @@ def main() -> None:
         fps = 25.0
 
     line_y = int(height * max(0.1, min(args.line, 0.9)))
-    output_path = Path(args.output) / "vehicle_tracking.mp4"
+    output_path = output_dir / "vehicle_tracking.mp4"
+    events_path = output_dir / "crossing_events.csv"
+    summary_path = output_dir / "traffic_summary.json"
     writer = cv2.VideoWriter(
         str(output_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
     )
@@ -71,6 +75,7 @@ def main() -> None:
     counts_in = defaultdict(int)
     counts_out = defaultdict(int)
     crossing_events: deque[tuple[float, str, str]] = deque()
+    all_events: list[dict[str, object]] = []
     frame_index = 0
     max_visible = 0
 
@@ -118,7 +123,9 @@ def main() -> None:
                                 counts_in[name] += 1
                             else:
                                 counts_out[name] += 1
+                            event = {"time_seconds": round(current_time, 3), "direction": direction, "vehicle": name, "track_id": track_id}
                             crossing_events.append((current_time, direction, name))
+                            all_events.append(event)
                             counted_ids.add(track_id)
                     previous_y[track_id] = center_y
 
@@ -133,19 +140,9 @@ def main() -> None:
             total = total_in + total_out
 
             cv2.rectangle(annotated, (10, 10), (400, 245), (0, 0, 0), -1)
-            lines = [
-                f"IN: {total_in}",
-                f"OUT: {total_out}",
-                f"TOTAL: {total}",
-                f"Visible: {visible_count}",
-                f"Vehicles/min: {vehicles_per_minute}",
-                f"Traffic: {density}",
-            ]
+            lines = [f"IN: {total_in}", f"OUT: {total_out}", f"TOTAL: {total}", f"Visible: {visible_count}", f"Vehicles/min: {vehicles_per_minute}", f"Traffic: {density}"]
             for index, text in enumerate(lines):
-                cv2.putText(
-                    annotated, text, (20, 40 + index * 34),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2,
-                )
+                cv2.putText(annotated, text, (20, 40 + index * 34), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
 
             writer.write(annotated)
             cv2.imshow("YOLO Vahan Saarthi - Traffic Monitor", annotated)
@@ -162,6 +159,27 @@ def main() -> None:
     duration_minutes = (frame_index / fps) / 60 if frame_index else 0
     avg_vpm = total_crossed / duration_minutes if duration_minutes else 0.0
 
+    with events_path.open("w", newline="", encoding="utf-8") as file:
+        fieldnames = ["time_seconds", "direction", "vehicle", "track_id"]
+        writer_csv = csv.DictWriter(file, fieldnames=fieldnames)
+        writer_csv.writeheader()
+        writer_csv.writerows(all_events)
+
+    summary = {
+        "counts_in": dict(counts_in),
+        "counts_out": dict(counts_out),
+        "total_in": total_in,
+        "total_out": total_out,
+        "total_crossed": total_crossed,
+        "peak_visible": max_visible,
+        "average_vehicles_per_minute": round(avg_vpm, 2),
+        "duration_minutes": round(duration_minutes, 2),
+        "density_thresholds": list(args.density_thresholds),
+        "counting_line_ratio": args.line,
+    }
+    with summary_path.open("w", encoding="utf-8") as file:
+        json.dump(summary, file, indent=2)
+
     print("\nTraffic Monitoring Summary")
     print("--------------------------")
     for name in VEHICLE_CLASSES.values():
@@ -170,6 +188,7 @@ def main() -> None:
     print(f"Peak visible : {max_visible} vehicles")
     print(f"Average rate : {avg_vpm:.1f} vehicles/min")
     print(f"Result saved : {output_path}")
+    print(f"Dashboard data: {summary_path}")
 
 
 if __name__ == "__main__":
