@@ -1,39 +1,47 @@
-"""Vehicle tracking with direction-aware IN/OUT counting.
+"""YOLO vehicle tracking, IN/OUT counting, and traffic analysis.
 
 Examples:
     python src/tracking_counting.py --source 0
     python src/tracking_counting.py --source path/to/video.mp4
 
-Vehicles are tracked with ByteTrack. A vehicle is counted once when its
-center crosses the configured horizontal line. Crossing from above to below
-is classified as IN; crossing from below to above is classified as OUT.
+Vehicles are tracked with ByteTrack. Crossing a horizontal line creates an
+IN or OUT event. The script also reports a rolling vehicles-per-minute rate
+and a simple traffic-density classification based on visible tracked vehicles.
 """
 
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict
+from collections import defaultdict, deque
 from pathlib import Path
 
 import cv2
 from ultralytics import YOLO
 
-VEHICLE_CLASSES = {
-    2: "car",
-    3: "motorcycle",
-    5: "bus",
-    7: "truck",
-}
+VEHICLE_CLASSES = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Track and count vehicles with YOLO.")
+    parser = argparse.ArgumentParser(description="Track, count, and analyze road traffic with YOLO.")
     parser.add_argument("--source", default="0", help="Video path or webcam index (default: 0).")
     parser.add_argument("--model", default="yolo11n.pt", help="Ultralytics YOLO model.")
     parser.add_argument("--conf", type=float, default=0.35, help="Confidence threshold.")
     parser.add_argument("--line", type=float, default=0.60, help="Counting line position as frame-height ratio.")
+    parser.add_argument(
+        "--density-thresholds", nargs=2, type=int, metavar=("MEDIUM", "HIGH"),
+        default=(5, 12), help="Visible-vehicle thresholds for Medium and High density.",
+    )
     parser.add_argument("--output", default="runs/track", help="Output directory.")
     return parser.parse_args()
+
+
+def density_label(visible_count: int, thresholds: tuple[int, int]) -> str:
+    medium, high = thresholds
+    if visible_count >= high:
+        return "HIGH"
+    if visible_count >= medium:
+        return "MEDIUM"
+    return "LOW"
 
 
 def main() -> None:
@@ -62,6 +70,9 @@ def main() -> None:
     counted_ids: set[int] = set()
     counts_in = defaultdict(int)
     counts_out = defaultdict(int)
+    crossing_events: deque[tuple[float, str, str]] = deque()
+    frame_index = 0
+    max_visible = 0
 
     try:
         while True:
@@ -69,16 +80,15 @@ def main() -> None:
             if not ok:
                 break
 
+            current_time = frame_index / fps
+            frame_index += 1
             result = model.track(
-                frame,
-                persist=True,
-                conf=args.conf,
-                classes=list(VEHICLE_CLASSES),
-                tracker="bytetrack.yaml",
-                verbose=False,
+                frame, persist=True, conf=args.conf,
+                classes=list(VEHICLE_CLASSES), tracker="bytetrack.yaml", verbose=False,
             )[0]
 
             annotated = result.plot()
+            visible_count = 0
             cv2.line(annotated, (0, line_y), (width, line_y), (255, 255, 255), 2)
             cv2.putText(
                 annotated, "COUNTING LINE", (20, max(30, line_y - 10)),
@@ -97,44 +107,48 @@ def main() -> None:
                     if name is None:
                         continue
 
+                    visible_count += 1
                     old_y = previous_y.get(track_id)
                     if old_y is not None and track_id not in counted_ids:
                         crossed_down = old_y < line_y <= center_y
                         crossed_up = old_y > line_y >= center_y
-
-                        if crossed_down:
-                            counts_in[name] += 1
+                        if crossed_down or crossed_up:
+                            direction = "IN" if crossed_down else "OUT"
+                            if direction == "IN":
+                                counts_in[name] += 1
+                            else:
+                                counts_out[name] += 1
+                            crossing_events.append((current_time, direction, name))
                             counted_ids.add(track_id)
-                        elif crossed_up:
-                            counts_out[name] += 1
-                            counted_ids.add(track_id)
-
                     previous_y[track_id] = center_y
 
+            max_visible = max(max_visible, visible_count)
+            while crossing_events and current_time - crossing_events[0][0] > 60:
+                crossing_events.popleft()
+
+            vehicles_per_minute = len(crossing_events)
+            density = density_label(visible_count, tuple(args.density_thresholds))
             total_in = sum(counts_in.values())
             total_out = sum(counts_out.values())
             total = total_in + total_out
 
-            # Dashboard overlay.
-            cv2.rectangle(annotated, (10, 10), (340, 205), (0, 0, 0), -1)
+            cv2.rectangle(annotated, (10, 10), (400, 245), (0, 0, 0), -1)
             lines = [
                 f"IN: {total_in}",
                 f"OUT: {total_out}",
                 f"TOTAL: {total}",
-                f"Cars {counts_in['car']}/{counts_out['car']}  "
-                f"Motorcycles {counts_in['motorcycle']}/{counts_out['motorcycle']}",
-                f"Buses {counts_in['bus']}/{counts_out['bus']}  "
-                f"Trucks {counts_in['truck']}/{counts_out['truck']}",
+                f"Visible: {visible_count}",
+                f"Vehicles/min: {vehicles_per_minute}",
+                f"Traffic: {density}",
             ]
             for index, text in enumerate(lines):
-                scale = 0.65 if index < 3 else 0.48
                 cv2.putText(
-                    annotated, text, (20, 40 + index * 32),
-                    cv2.FONT_HERSHEY_SIMPLEX, scale, (255, 255, 255), 2,
+                    annotated, text, (20, 40 + index * 34),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2,
                 )
 
             writer.write(annotated)
-            cv2.imshow("YOLO Vahan Saarthi - IN/OUT Tracking", annotated)
+            cv2.imshow("YOLO Vahan Saarthi - Traffic Monitor", annotated)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
     finally:
@@ -144,14 +158,17 @@ def main() -> None:
 
     total_in = sum(counts_in.values())
     total_out = sum(counts_out.values())
-    print("\nVehicle Tracking & Counting Summary")
-    print("-----------------------------------")
-    print(f"IN           : {total_in}")
-    print(f"OUT          : {total_out}")
-    print(f"Total        : {total_in + total_out}")
-    print("\nBy vehicle class (IN / OUT):")
+    total_crossed = total_in + total_out
+    duration_minutes = (frame_index / fps) / 60 if frame_index else 0
+    avg_vpm = total_crossed / duration_minutes if duration_minutes else 0.0
+
+    print("\nTraffic Monitoring Summary")
+    print("--------------------------")
     for name in VEHICLE_CLASSES.values():
-        print(f"{name.capitalize():12}: {counts_in[name]} / {counts_out[name]}")
+        print(f"{name.capitalize():12}: IN={counts_in[name]:4}  OUT={counts_out[name]:4}")
+    print(f"Total crossed: {total_crossed}")
+    print(f"Peak visible : {max_visible} vehicles")
+    print(f"Average rate : {avg_vpm:.1f} vehicles/min")
     print(f"Result saved : {output_path}")
 
 
