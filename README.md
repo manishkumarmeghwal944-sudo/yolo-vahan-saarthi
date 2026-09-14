@@ -1,12 +1,12 @@
 # 🚗 YOLO Vahan Saarthi
 
-> YOLO-based vehicle detection, tracking, direction-aware counting, and traffic-density analysis.
+> YOLO-based vehicle detection, tracking, direction-aware counting, traffic-density analysis, and a Streamlit dashboard.
 
 ## 📌 Overview
 
 **YOLO Vahan Saarthi** is a computer vision project built with **Ultralytics YOLO** to detect and track common road vehicles such as cars, motorcycles, buses, and trucks.
 
-The project includes a tracking and traffic-monitoring pipeline using **ByteTrack**. Each tracked vehicle receives a persistent ID, crossing events are classified as **IN** or **OUT**, and the system reports both a rolling vehicles-per-minute rate and a simple live traffic-density level.
+The project includes a **ByteTrack** traffic-monitoring pipeline. Each tracked vehicle receives a persistent ID, crossing events are classified as **IN** or **OUT**, and results are exported as JSON/CSV data for a local Streamlit dashboard.
 
 ## ✨ Current Features
 
@@ -22,6 +22,8 @@ The project includes a tracking and traffic-monitoring pipeline using **ByteTrac
 - 🚥 Live **LOW / MEDIUM / HIGH** traffic-density classification
 - 📈 Peak visible-vehicle count and average traffic rate
 - 💾 Saves the processed tracking video
+- 📁 Exports traffic summary JSON and crossing-event CSV
+- 🖥️ Streamlit dashboard with metrics, charts, and event table
 
 ## 🛠️ Tech Stack
 
@@ -30,6 +32,8 @@ The project includes a tracking and traffic-monitoring pipeline using **ByteTrac
 - **OpenCV**
 - **ByteTrack** (through Ultralytics)
 - **PyTorch** (through Ultralytics)
+- **Streamlit**
+- **Pandas**
 
 ## 📁 Project Structure
 
@@ -40,7 +44,8 @@ yolo-vahan-saarthi/
 ├── .gitignore
 └── src/
     ├── detection.py
-    └── tracking_counting.py
+    ├── tracking_counting.py
+    └── dashboard.py
 ```
 
 ## 🚀 Installation
@@ -87,6 +92,33 @@ For a webcam:
 python src/tracking_counting.py --source 0
 ```
 
+After processing a video, the tracker creates:
+
+```text
+runs/track/vehicle_tracking.mp4
+runs/track/traffic_summary.json
+runs/track/crossing_events.csv
+```
+
+### Web dashboard
+
+Start the Streamlit dashboard from the project root:
+
+```bash
+streamlit run src/dashboard.py
+```
+
+The dashboard reads `runs/track/traffic_summary.json` and `runs/track/crossing_events.csv`, then displays:
+
+- Total IN, OUT, and crossed vehicles
+- Peak visible vehicles
+- Per-class IN/OUT bar chart
+- Average vehicles-per-minute
+- Crossing-event trend by minute
+- Detailed crossing-event table
+
+If your results are stored elsewhere, use the dashboard sidebar to provide the JSON and CSV paths.
+
 ### Change the counting line
 
 The default line is at 60% of the frame height. For a line halfway down the frame:
@@ -123,12 +155,6 @@ python src/tracking_counting.py --source path/to/video.mp4 --model yolo11s.pt
 
 Press **Q** to stop processing.
 
-Processed video:
-
-```text
-runs/track/vehicle_tracking.mp4
-```
-
 ## 🚦 IN / OUT Counting Logic
 
 The counting line divides the frame into two regions:
@@ -154,13 +180,14 @@ These are configurable thresholds rather than calibrated traffic-engineering sta
 
 ### Vehicles per minute
 
-A rolling 60-second window tracks recent IN/OUT crossing events and displays:
+A rolling 60-second window tracks recent IN/OUT crossing events and displays the current traffic rate. At the end of processing, the program also reports the average crossing rate for the complete video.
 
-```text
-Vehicles/min: 14
-```
+## 📊 Dashboard Data
 
-At the end of processing, the program also reports the average crossing rate for the complete video.
+The tracker exports machine-readable results so the dashboard does not need to rerun YOLO:
+
+- `traffic_summary.json` — totals, peak visible count, average rate, and configuration.
+- `crossing_events.csv` — timestamp, direction, vehicle class, and tracking ID for every crossing event.
 
 ## 🚘 Detected Vehicle Classes
 
@@ -170,21 +197,6 @@ At the end of processing, the program also reports the average crossing rate for
 | Motorcycle | 3 |
 | Bus | 5 |
 | Truck | 7 |
-
-## 📊 Example Output
-
-```text
-Traffic Monitoring Summary
---------------------------
-Car         : IN=  25  OUT=  10
-Motorcycle  : IN=  12  OUT=   5
-Bus         : IN=   2  OUT=   1
-Truck       : IN=   3  OUT=   2
-Total crossed: 60
-Peak visible : 14 vehicles
-Average rate : 11.5 vehicles/min
-Result saved : runs/track/vehicle_tracking.mp4
-```
 
 ## 🗺️ Roadmap
 
@@ -196,7 +208,7 @@ Result saved : runs/track/vehicle_tracking.mp4
 - [x] Direction-aware IN/OUT counting
 - [x] Traffic-density analysis
 - [x] Vehicle-per-minute statistics
-- [ ] Web dashboard
+- [x] Web dashboard
 - [ ] Automated tests
 - [ ] Evaluation metrics and benchmark results
 - [ ] Sample detection/tracking outputs
