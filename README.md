@@ -24,6 +24,7 @@ The project includes a **ByteTrack** traffic-monitoring pipeline. Each tracked v
 - 💾 Saves the processed tracking video
 - 📁 Exports traffic summary JSON and crossing-event CSV
 - 🖥️ Streamlit dashboard with metrics, charts, and event table
+- ⬇️ One-command download of a small CC0 sample traffic video
 
 ## 🛠️ Tech Stack
 
@@ -41,6 +42,7 @@ The project includes a **ByteTrack** traffic-monitoring pipeline. Each tracked v
 yolo-vahan-saarthi/
 ├── README.md
 ├── requirements.txt
+├── download_sample.py
 ├── .gitignore
 └── src/
     ├── detection.py
@@ -73,6 +75,28 @@ pip install -r requirements.txt
 YOLO model weights are downloaded automatically by Ultralytics when first used.
 
 ## ▶️ Usage
+
+### Download a sample traffic video
+
+The repository includes a downloader for a small **CC0-licensed traffic video** hosted by Wikimedia Commons. The video itself is intentionally not committed to GitHub, keeping the repository lightweight.
+
+From the project root:
+
+```bash
+python download_sample.py
+```
+
+This creates:
+
+```text
+traffic_sample.webm
+```
+
+Then run the tracker:
+
+```bash
+python src/tracking_counting.py --source traffic_sample.webm
+```
 
 ### Basic detection
 
@@ -209,6 +233,7 @@ The tracker exports machine-readable results so the dashboard does not need to r
 - [x] Traffic-density analysis
 - [x] Vehicle-per-minute statistics
 - [x] Web dashboard
+- [x] One-command sample traffic video download
 - [ ] Automated tests
 - [ ] Evaluation metrics and benchmark results
 - [ ] Sample detection/tracking outputs
