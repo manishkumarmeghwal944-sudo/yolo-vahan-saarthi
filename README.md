@@ -1,12 +1,12 @@
 # 🚗 YOLO Vahan Saarthi
 
-> YOLO-based vehicle detection, tracking, and counting for road-traffic video.
+> YOLO-based vehicle detection, tracking, and direction-aware traffic counting.
 
 ## 📌 Overview
 
 **YOLO Vahan Saarthi** is a computer vision project built with **Ultralytics YOLO** to detect and track common road vehicles such as cars, motorcycles, buses, and trucks.
 
-The project now includes both basic detection and a tracking/counting pipeline. Vehicles receive persistent tracking IDs, and each tracked vehicle is counted once when its center crosses a configurable counting line.
+The project includes a tracking and counting pipeline using **ByteTrack**. Each tracked vehicle receives a persistent ID and is counted once when its center crosses a configurable horizontal line. The crossing direction is reported as **IN** or **OUT**.
 
 ## ✨ Current Features
 
@@ -14,11 +14,11 @@ The project now includes both basic detection and a tracking/counting pipeline. 
 - 🎥 Supports video files
 - 📹 Supports webcam input
 - 🎯 Configurable confidence threshold
-- 🆔 Assigns persistent tracking IDs with **ByteTrack**
-- 🚦 Counts vehicles crossing a configurable line
-- 📊 Displays live per-class counts
+- 🆔 Persistent tracking IDs with **ByteTrack**
+- 🚦 Configurable counting line
+- ↗️ Direction-aware **IN / OUT** counting
+- 📊 Live total and per-class counts
 - 💾 Saves the processed tracking video
-- 🤖 Uses an Ultralytics YOLO model
 
 ## 🛠️ Tech Stack
 
@@ -42,112 +42,88 @@ yolo-vahan-saarthi/
 
 ## 🚀 Installation
 
-### 1. Clone the repository
-
 ```bash
 git clone https://github.com/manishkumarmeghwal944-sudo/yolo-vahan-saarthi.git
 cd yolo-vahan-saarthi
+python -m venv venv
 ```
 
-### 2. Create and activate a virtual environment
+Activate the environment and install dependencies:
 
 **Windows**
-
 ```bash
-python -m venv venv
 venv\Scripts\activate
-```
-
-**Linux / macOS**
-
-```bash
-python -m venv venv
-source venv/bin/activate
-```
-
-### 3. Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-YOLO model weights are downloaded automatically by Ultralytics when the selected model is used for the first time.
+**Linux / macOS**
+```bash
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+YOLO model weights are downloaded automatically by Ultralytics when first used.
 
 ## ▶️ Usage
 
-### Basic vehicle detection
-
-Webcam:
-
-```bash
-python src/detection.py --source 0
-```
-
-Video:
+### Basic detection
 
 ```bash
 python src/detection.py --source path/to/video.mp4
 ```
 
-Image:
-
-```bash
-python src/detection.py --source path/to/image.jpg
-```
-
-### Vehicle tracking and counting
-
-Webcam:
-
-```bash
-python src/tracking_counting.py --source 0
-```
-
-Video:
+### Tracking + IN/OUT counting
 
 ```bash
 python src/tracking_counting.py --source path/to/video.mp4
 ```
 
-The default counting line is at **60% of the frame height**. You can change it with `--line`:
+For a webcam:
+
+```bash
+python src/tracking_counting.py --source 0
+```
+
+### Change the counting line
+
+The default line is at 60% of the frame height. For a line halfway down the frame:
 
 ```bash
 python src/tracking_counting.py --source path/to/video.mp4 --line 0.50
 ```
 
-Change the confidence threshold:
+### Change confidence
 
 ```bash
 python src/tracking_counting.py --source path/to/video.mp4 --conf 0.50
 ```
 
-Use a different YOLO model:
+### Change YOLO model
 
 ```bash
 python src/tracking_counting.py --source path/to/video.mp4 --model yolo11s.pt
 ```
 
-Press **Q** while the tracking window is active to stop processing early.
+Press **Q** to stop processing.
 
-Processed tracking videos are saved under:
+Processed video:
 
 ```text
 runs/track/vehicle_tracking.mp4
 ```
 
-## 🚦 How Counting Works
+## 🚦 IN / OUT Counting Logic
 
-1. YOLO detects the selected vehicle classes.
-2. ByteTrack assigns a persistent ID to each detected vehicle.
-3. The center point of each tracked bounding box is monitored across frames.
-4. When a vehicle center crosses the counting line, that track ID is counted once.
-5. Counts are displayed separately for cars, motorcycles, buses, and trucks.
+The counting line divides the frame into two regions:
 
-> **Note:** The current counter counts crossings in either direction. A single track is counted only once during a run.
+- **IN:** vehicle center moves from above the line to below it.
+- **OUT:** vehicle center moves from below the line to above it.
+
+Each tracking ID is counted only once per program run, preventing repeated counts while the vehicle remains near the line.
+
+> For reliable results, place the counting line across the road where vehicles clearly pass through it and use a camera with a stable view.
 
 ## 🚘 Detected Vehicle Classes
-
-The pipeline filters the standard COCO classes to:
 
 | Class | YOLO Class ID |
 |---|---:|
@@ -161,28 +137,31 @@ The pipeline filters the standard COCO classes to:
 ```text
 Vehicle Tracking & Counting Summary
 -----------------------------------
-Car         : 42
-Motorcycle  : 18
-Bus         : 5
-Truck       : 11
-Total crossed: 76
-Result saved : runs/track/vehicle_tracking.mp4
+IN           : 42
+OUT          : 18
+Total        : 60
+
+By vehicle class (IN / OUT):
+Car         : 25 / 10
+Motorcycle  : 12 / 5
+Bus         : 2 / 1
+Truck       : 3 / 2
 ```
 
 ## 🗺️ Roadmap
 
-- [x] Create project structure
-- [x] Add YOLO vehicle detection
-- [x] Support webcam, image, and video detection
-- [x] Add confidence threshold configuration
-- [x] Save detection results
-- [x] Add vehicle tracking
-- [x] Add line-crossing vehicle counting
-- [ ] Add direction-aware IN/OUT counting
-- [ ] Add traffic-density analysis
-- [ ] Add automated tests
-- [ ] Add evaluation metrics and benchmark results
-- [ ] Add sample detection/tracking outputs
+- [x] YOLO vehicle detection
+- [x] Webcam, image, and video detection
+- [x] Confidence threshold configuration
+- [x] Vehicle tracking with ByteTrack
+- [x] Line-crossing counting
+- [x] Direction-aware IN/OUT counting
+- [ ] Traffic-density analysis
+- [ ] Vehicle-per-minute statistics
+- [ ] Web dashboard
+- [ ] Automated tests
+- [ ] Evaluation metrics and benchmark results
+- [ ] Sample detection/tracking outputs
 
 ## 🤝 Contributing
 
